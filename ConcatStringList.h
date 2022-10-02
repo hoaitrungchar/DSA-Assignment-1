@@ -222,19 +222,16 @@ public:
             return s1;
         }
         p = start;
-        cout << p->CharArrayList.substr(vitristart, p->CharArrayList.length() - vitristart) << endl;
         CharALNode* addes = new CharALNode(p->CharArrayList.substr(vitristart, p->CharArrayList.length() - vitristart));
         s.addALNode(addes);
 
         while (p->next != endt) {
             p = p->next;
             CharALNode* adde = new CharALNode(p->CharArrayList.substr(0, p->CharArrayList.length()));
-            cout << p->CharArrayList << ' ' << p->CharArrayList.substr(0, p->CharArrayList.length()) << endl;
             s.addALNode(adde);
         }
         p = p->next;
         CharALNode* addee = new CharALNode(p->CharArrayList.substr(0, vitriend));
-        cout << addee->CharArrayList << ' ' << vitriend << ' ' << p->CharArrayList.substr(0, vitriend) << endl;
         s.addALNode(addee);
         return s;
     };
@@ -335,6 +332,7 @@ public:
 
         }
         void themrefnode(CharALNode*a) {
+           
             int check = 0;
             RefNode* p = head;
             while (p != NULL) {
@@ -425,6 +423,7 @@ public:
             return s;
         };
         void delrefnode(CharALNode* a, int numdel) {
+            if (head == NULL) return;
             RefNode* p = head;
             while (p != NULL) {
                 if (p->address == a)
@@ -434,6 +433,7 @@ public:
                 }
                 p = p->next;
             }
+            if (p == NULL) return;
             if (p->numref == 0) {
                 if (p == tail) {
                     totalrefcount = totalrefcount - numdel;
