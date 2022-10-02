@@ -36,18 +36,24 @@ public:
 };
 class DelNode {
 public:
-    RefNode* next;
-    CharALNode* addressdel;
-    RefNode* addressref;
+    DelNode* next;
+    CharALNode* addressdelhead;
+    CharALNode* addressdeltail;
+    RefNode* addressrefhead;
+    RefNode* addressreftail;
 public:
     DelNode() {
         next = NULL;
-        addressdel = NULL;
-        addressref = NULL;
+        addressdelhead = NULL;
+        addressdeltail = NULL;
+        addressrefhead = NULL;
+        addressreftail = NULL;
     }
-    DelNode(CharALNode* addressdel, RefNode* addressref) {
-        this->addressdel = addressdel;
-        this->addressref = addressref;
+    DelNode(CharALNode* addressdelhead, CharALNode* addressdeltail, RefNode* addressrefhead, RefNode* addressreftail) {
+        this->addressdelhead = addressdelhead;
+        this->addressdeltail = addressdeltail;
+        this->addressrefhead = addressrefhead;
+        this->addressreftail = addressreftail;
         next = NULL;
 
     }
@@ -172,13 +178,13 @@ public:
         return res;
     };
     ConcatStringList concat(const ConcatStringList& otherS) const {
-        ConcatStringList s = *this;
-        s.tail = otherS.tail;
+        ConcatStringList *s =new  ConcatStringList();
+        s->tail = otherS.tail;
         this->tail->next = otherS.head;
-        s.head = this->head;
+        s->head = this->head;
 
-        refList.addreflist(s.head, s.tail);
-        return s;
+        refList.addreflist(s->head, s->tail);
+        return *s;
     };
     ConcatStringList subString(int from, int to) const {
         if (from >= to) throw logic_error("Invalid range");
@@ -252,16 +258,28 @@ public:
     };
     ~ConcatStringList() {
         if (head == tail) {
+            delStrList.adddelnode(head,tail, refList.getnode(head), refList.getnode(tail));
             refList.delrefnode(head, 2);
-        }
-        else {
-            refList.delrefnode(head, 1);
-            refList.delrefnode(tail, 1);
-        }
-        if (refList.refCountAtNode(head) == 0 && refList.refCountAtNode(tail) == 0)
-        {
 
         }
+        else {
+            delStrList.adddelnode(head, tail, refList.getnode(head), refList.getnode(tail));
+            refList.delrefnode(head, 1);
+           refList.delrefnode(tail, 1);
+        }
+        /*if (refList.refCountAtNode(head) == 0 && refList.refCountAtNode(tail) == 0)
+        {
+            delStrList.adddelnode(head, tail, refList.getnode(head), refList.getnode(tail));
+            CharALNode* p = head;
+            CharALNode* cur = p;
+            while (p != NULL)
+            {
+                p = p->next;
+                delete cur;
+                cur = p;
+            }
+            head = tail = NULL;
+        }saicansua*/
     };
 
 public:
@@ -271,7 +289,7 @@ public:
         RefNode* head;
         RefNode* tail;
         int count = 0;
-
+        int totalrefcount = 0;
     public:
         
         int size() const {
@@ -287,6 +305,7 @@ public:
                     head = new RefNode(a);
                     tail = head;
                     (head->numref)= (head->numref)+1;
+                    totalrefcount = 2;
                     count = 1;
                     return;
 
@@ -296,14 +315,15 @@ public:
                     tail = new RefNode(b);
                     head->next = tail;
                     count = 2;
+                    totalrefcount = 2;
                     return;
                 }
             }
            
-            if (a == b) {
+            //if (a == b) {
                 themrefnode(a);
                 themrefnode(b);
-            }
+            /*}
             else {
                 CharALNode* p = a;
                 while (p != NULL)
@@ -311,7 +331,7 @@ public:
                     themrefnode(p);
                     p = p->next;
                 }
-            }
+            }*/ 
 
         }
         void themrefnode(CharALNode*a) {
@@ -350,7 +370,7 @@ public:
                 pre->next = p;
                 p->next = cur;
             }
-                
+            totalrefcount ++;
             
         }
         int refCountAtNode(CharALNode* a) {
@@ -362,7 +382,15 @@ public:
             }
             return -1;
         };
-        
+        RefNode* getnode(CharALNode* a) {
+            RefNode* p = this->head;
+            while (p != NULL) {
+                if (p->address == a)
+                    return p;
+                p = p->next;
+            }
+            return p;
+        }
         int refCountAt(int index) const {
             if (index < 0 || index >= count) throw out_of_range("Index of references list is invalid!");
             RefNode* p = head;
@@ -375,6 +403,7 @@ public:
         };
         std::string refCountsString() const {
             string s = "RefCounts[";
+            if(totalrefcount==0) return "RefCounts[]";
             RefNode* p = head;
             if (p != NULL) {
                 while (p->next != NULL) {
@@ -406,33 +435,107 @@ public:
                 p = p->next;
             }
             if (p->numref == 0) {
+                if (p == tail) {
+                    totalrefcount = totalrefcount - numdel;
+                    return;
+                }
+                if (p == head) {
+                    head = p->next;
+                    totalrefcount = totalrefcount - numdel;
+                    tail->next = p;
+                    tail = p;
+                    p->next = NULL;
+                    return;
+                }
+                RefNode* prep = head;
+                while (prep->next != p)
+                {
+                    prep = prep->next;
+                }
                 if (tail != NULL) {
+                    prep->next = p->next;
                     tail->next = p;
                     tail = p;
                }
             }
             else {
-                if (p != NULL && p->next != NULL && p->numref > p->next->numref) {
-                    RefNode* prep = head;
-                    while (prep->next != p)
-                    {
-                        prep = prep->next;
+                if (p == head) {
+
+                    totalrefcount = totalrefcount - numdel;
+                    return;
+                }
+               
+
+                if (p == tail) {
+                    RefNode* temp = head;
+                    while (temp != NULL) {
+                        if (temp->next == p) break;
+                        temp = temp->next;
                     }
-                    RefNode* cur = head;
-                    RefNode* pre = NULL;
-                    while (cur != NULL && cur->numref <= p->numref)
+                    if (head->numref > p->numref)
                     {
+                        tail = temp;
+                        p->next = head;
+                        head = p;
+                        temp->next = NULL;
+                        totalrefcount = totalrefcount - numdel;
+                        return;
+                    }
+                    if (temp->numref <= p->numref)
+                    {
+                        totalrefcount = totalrefcount - numdel;
+                        return;
+                    }
+                    RefNode* cur=head;
+                    RefNode* pre = head;
+                    while (cur->numref < p->numref) {
                         pre = cur;
                         cur = cur->next;
                     }
-                    prep->next = p->next;
+                    p->next = pre->next;
                     pre->next = p;
-                    p->next = cur;
+                    temp->next = NULL;
+                    tail = temp;
+                    totalrefcount = totalrefcount - numdel;
+                    return;
                 }
+                RefNode* prep = head;
+                while (prep->next != p)
+                {
+                    prep = prep->next;
+                }
+                if (head->numref >= p->numref) {
+                    prep->next = p->next;
+                    p->next = head;
+                    head = p;
+                    totalrefcount= totalrefcount-numdel;
+                    return;
+                }
+                RefNode* cur = head;
+                RefNode* pre = NULL;
+                while (cur != NULL && cur->numref <= p->numref)
+                {
+                    pre = cur;
+                    cur = cur->next;
+                }
+                prep->next = p->next;
+                pre->next = p;
+                p->next = cur;
             }
-
+            totalrefcount = totalrefcount - numdel;
+        }
+        void delreflist(CharALNode* a, CharALNode* b) {
+            if (totalrefcount != 0) return;
+            this->~ReferencesList();
         }
         ~ReferencesList() {
+            /*RefNode* p = head;
+            RefNode* pre = p;
+            while (p != NULL) {
+                p = p->next;
+                delete pre;
+                pre = p;
+            }*/
             head = tail = NULL;
         };
     };
@@ -450,8 +553,87 @@ public:
         int size() const {
             return count;
         };
-        std::string totalRefCountsString() const;
+        long long totalref() const {
+            DelNode* p = head;
+            long long totalref = 0;
+            while (p != NULL)
+            {
+                if (p->addressrefhead == p->addressreftail)
+                    totalref += p->addressrefhead->numref;
+                else {
+                    totalref += p->addressrefhead->numref;
+                    totalref += p->addressreftail->numref;
+                }
+                p = p->next;
+            }
+            return totalref;
+        };
+        std::string totalRefCountsString() const {
+            if (this->totalref() == 0) return "TotalRefCounts[]";
+            string s="TotalRefCounts[";
+            stringstream a; a << this->totalref();
+            string s1;
+            a >> s1;
+            s = s + s1;
+            s += "]";
+            return s;
+
+        };
+        void adddelnode(CharALNode* a, CharALNode* b, RefNode*c, RefNode* d) {
+            DelNode* p = new DelNode(a, b,c,d);
+            if (head == NULL) {
+                head = tail = p;
+                count = 1;
+                return;
+            }
+            tail->next = p;
+            tail = p;
+        };
+        /*void delnode(CharALNode* a) {
+            if (head->addressdel == a)
+            {
+                DelNode* temp = head;
+                if (head == tail) {
+                    delete head;
+                    head = tail = NULL;
+                    return;
+                }
+                head = head->next;
+                delete temp;
+                return;
+            }
+            if (tail->addressdel == a)
+            {
+                DelNode* p = head;
+                while (p->next != tail) {
+                    p = p->next;
+                }
+                p->next = NULL;
+                delete tail;
+                tail = p;
+                return;
+            }
+            DelNode* p = head;
+            while (p->next != tail) {
+                if (p->next->addressdel == a) {
+                    DelNode* temp = p->next;
+                    p->next = p->next->next;
+                    delete temp;
+                    return;
+                }
+                p = p->next;
+            }
+        };saicansua */
         ~DeleteStringList() {
+            /*DelNode* temp = head;
+            DelNode* p = head;
+            while (p != NULL)
+            {
+                p = p->next;
+                delete temp;
+                temp = p;
+            }
+            count = 0;*/
             head = tail = NULL;
 
         }
@@ -460,4 +642,3 @@ public:
 };
 
 #endif // __CONCAT_STRING_LIST_H__#pragma once
-
